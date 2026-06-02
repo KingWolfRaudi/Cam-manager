@@ -10,9 +10,9 @@
             flex-direction: column;
             align-items: center;
             font-family: Arial, sans-serif;
-            background-color: #222; /* Fondo oscuro para que resalte el video */
+            background-color: #222;
             color: white;
-            margin-top: 50px;
+            margin-top: 30px;
         }
         img {
             border: 5px solid #555;
@@ -20,7 +20,30 @@
             box-shadow: 0px 4px 10px rgba(0,0,0,0.5);
             width: 100%;
             max-width: 640px;
+            margin-bottom: 20px;
         }
+        .controles {
+            display: flex;
+            gap: 15px; /* Espacio entre los botones */
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        #btnFoto { background-color: #4CAF50; color: white; }
+        #btnFoto:hover { background-color: #45a049; }
+        
+        #btnVideo { background-color: #2196F3; color: white; }
+        #btnVideo:hover { background-color: #0b7dda; }
+        
+        /* Estilo especial para cuando el botón de video esté grabando */
+        #btnVideo.grabando { background-color: #f44336; }
+        #btnVideo.grabando:hover { background-color: #da190b; }
     </style>
 </head>
 <body>
@@ -29,5 +52,42 @@
     
     <img src="{{ url_for('video_feed') }}" alt="Transmisión de la cámara">
 
+    <div class="controles">
+        <button id="btnFoto" onclick="tomarFoto()">📸 Tomar Foto</button>
+        <button id="btnVideo" onclick="grabarVideo()">🎥 Iniciar Grabación</button>
+    </div>
+
+    <script>
+        // Función para tomar foto
+        function tomarFoto() {
+            // fetch() envía una petición silenciosa al servidor
+            fetch('/tomar_foto', { method: 'POST' })
+                .then(respuesta => {
+                    if(respuesta.ok) {
+                        alert('¡Foto guardada en la carpeta "capturas" de tu servidor!');
+                    } else {
+                        alert('Hubo un error al tomar la foto.');
+                    }
+                });
+        }
+
+        // Función para empezar o detener el video
+        function grabarVideo() {
+            let boton = document.getElementById('btnVideo');
+            
+            fetch('/toggle_video', { method: 'POST' })
+                .then(respuesta => respuesta.text()) // Leemos la respuesta (grabando o detenido)
+                .then(estado => {
+                    if (estado === "grabando") {
+                        boton.innerText = "⏹️ Detener Grabación";
+                        boton.classList.add("grabando"); // Cambia a color rojo
+                    } else {
+                        boton.innerText = "🎥 Iniciar Grabación";
+                        boton.classList.remove("grabando"); // Vuelve a color azul
+                        alert('¡Video guardado en la carpeta "capturas"!');
+                    }
+                });
+        }
+    </script>
 </body>
 </html>
