@@ -11,7 +11,7 @@ def generar_frames():
     camara.set(cv2.CAP_PROP_BUFFERSIZE, 1)
     
     # 2. Forzamos una resolución más pequeña (640x480)
-    camara.set(cv2.CAP_PROP_FRAME_WIDTH, 854)
+    camara.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     camara.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     # --- FIN DE OPTIMIZACIONES ---
     
