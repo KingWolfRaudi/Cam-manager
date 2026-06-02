@@ -19,14 +19,17 @@
             border-radius: 10px;
             box-shadow: 0px 4px 10px rgba(0,0,0,0.5);
             width: 100%;
-            max-width: 640px;
+            /* Quitamos el max-width estricto para poder ver cuando la imagen se agrande */
+            max-width: 80vw; 
             margin-bottom: 20px;
         }
         .controles {
             display: flex;
-            gap: 15px; /* Espacio entre los botones */
+            gap: 15px;
+            align-items: center; /* Alinea los botones y el selector al centro */
+            margin-bottom: 20px;
         }
-        button {
+        button, select {
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
@@ -35,13 +38,18 @@
             font-weight: bold;
             transition: background-color 0.3s;
         }
+        /* Estilos para nuestro nuevo selector de resolución */
+        select {
+            background-color: #555;
+            color: white;
+            border: 1px solid #777;
+        }
+        
         #btnFoto { background-color: #4CAF50; color: white; }
         #btnFoto:hover { background-color: #45a049; }
         
         #btnVideo { background-color: #2196F3; color: white; }
         #btnVideo:hover { background-color: #0b7dda; }
-        
-        /* Estilo especial para cuando el botón de video esté grabando */
         #btnVideo.grabando { background-color: #f44336; }
         #btnVideo.grabando:hover { background-color: #da190b; }
     </style>
@@ -50,43 +58,64 @@
 
     <h1>Cámara del Servidor Ubuntu</h1>
     
-    <img src="{{ url_for('video_feed') }}" alt="Transmisión de la cámara">
-
     <div class="controles">
+        <select id="selectorResolucion" onchange="cambiarResolucion()">
+            <option value="320x240">320 x 240 (Baja)</option>
+            <option value="640x480" selected>640 x 480 (Estándar)</option>
+            <option value="1280x720">1280 x 720 (HD)</option>
+        </select>
+
         <button id="btnFoto" onclick="tomarFoto()">📸 Tomar Foto</button>
         <button id="btnVideo" onclick="grabarVideo()">🎥 Iniciar Grabación</button>
     </div>
 
+    <img src="{{ url_for('video_feed') }}" alt="Transmisión de la cámara">
+
     <script>
-        // Función para tomar foto
         function tomarFoto() {
-            // fetch() envía una petición silenciosa al servidor
             fetch('/tomar_foto', { method: 'POST' })
                 .then(respuesta => {
-                    if(respuesta.ok) {
-                        alert('¡Foto guardada en la carpeta "capturas" de tu servidor!');
-                    } else {
-                        alert('Hubo un error al tomar la foto.');
-                    }
+                    if(respuesta.ok) alert('¡Foto guardada en la carpeta "capturas"!');
                 });
         }
 
-        // Función para empezar o detener el video
         function grabarVideo() {
             let boton = document.getElementById('btnVideo');
             
             fetch('/toggle_video', { method: 'POST' })
-                .then(respuesta => respuesta.text()) // Leemos la respuesta (grabando o detenido)
+                .then(respuesta => respuesta.text())
                 .then(estado => {
                     if (estado === "grabando") {
                         boton.innerText = "⏹️ Detener Grabación";
-                        boton.classList.add("grabando"); // Cambia a color rojo
+                        boton.classList.add("grabando");
                     } else {
                         boton.innerText = "🎥 Iniciar Grabación";
-                        boton.classList.remove("grabando"); // Vuelve a color azul
+                        boton.classList.remove("grabando");
                         alert('¡Video guardado en la carpeta "capturas"!');
                     }
                 });
+        }
+
+        // --- NUEVA FUNCIÓN PARA CAMBIAR RESOLUCIÓN ---
+        function cambiarResolucion() {
+            let selector = document.getElementById('selectorResolucion');
+            // Separamos el valor, ej: de "1280x720" sacamos "1280" y "720"
+            let dimensiones = selector.value.split('x');
+            let ancho = dimensiones[0];
+            let alto = dimensiones[1];
+
+            // Enviamos los datos a Python en formato JSON
+            fetch('/set_resolucion', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ancho: ancho, alto: alto })
+            }).then(respuesta => {
+                if(respuesta.ok) {
+                    console.log("Petición de resolución enviada exitosamente.");
+                }
+            });
         }
     </script>
 </body>
