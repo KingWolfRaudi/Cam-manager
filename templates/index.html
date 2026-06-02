@@ -23,16 +23,40 @@
             margin-bottom: 15px;
         }
 
-        img {
+        /* --- CONTENEDOR DEL VISOR --- */
+        .visor-container {
+            width: 100%;
+            max-width: 640px;
+            aspect-ratio: 4 / 3;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        /* La imagen de la cámara ahora está oculta por defecto */
+        #visorCamara {
             border: 4px solid #555;
             border-radius: 10px;
             box-shadow: 0px 4px 10px rgba(0,0,0,0.5);
             width: 100%; 
-            max-width: 640px; 
-            aspect-ratio: 4 / 3; 
+            height: 100%;
             object-fit: contain; 
             background-color: #000; 
-            margin-bottom: 20px;
+            display: none; 
+        }
+
+        /* Pantalla de reposo cuando la cámara está apagada */
+        #placeholderCamara {
+            border: 4px dashed #555;
+            border-radius: 10px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #777;
+            font-size: 1.2rem;
+            box-sizing: border-box;
         }
 
         .controles {
@@ -59,47 +83,45 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            /* Evita que el texto largo se desborde */
             white-space: nowrap; 
         }
 
-        button:active {
-            transform: scale(0.95);
-        }
-
-        select {
-            background-color: #555;
-            color: white;
-            border: 1px solid #777;
-        }
+        button:active { transform: scale(0.95); }
+        select { background-color: #555; color: white; border: 1px solid #777; }
         
-        #btnFoto { background-color: #4CAF50; color: white; }
-        #btnFoto:hover { background-color: #45a049; }
+        #btnEncendido { background-color: #4CAF50; color: white; width: 100%; max-width: 640px; margin-bottom: 20px;}
+        #btnEncendido.activa { background-color: #f44336; }
         
-        #btnVideo { background-color: #2196F3; color: white; }
-        #btnVideo:hover { background-color: #0b7dda; }
-        #btnVideo.grabando { background-color: #f44336; }
-        #btnVideo.grabando:hover { background-color: #da190b; }
+        #btnFoto { background-color: #555; color: white; } /* Inicia en gris (desactivado) */
+        #btnVideo { background-color: #555; color: white; }
+        
+        /* Clases dinámicas cuando la cámara se enciende */
+        #btnFoto.lista { background-color: #4CAF50; }
+        #btnFoto.lista:hover { background-color: #45a049; }
+        #btnVideo.lista { background-color: #2196F3; }
+        #btnVideo.lista:hover { background-color: #0b7dda; }
+        #btnVideo.grabando { background-color: #f44336 !important; }
 
-        /* --- CUADRÍCULA ESTRICTA PARA MÓVILES --- */
         @media (max-width: 768px) {
-            .controles {
-                display: grid; /* Cambiamos de flex a grid */
-                grid-template-columns: 1fr; /* Forzamos una sola columna que ocupa el 100% */
-                gap: 10px;
-            }
-            
-            button, select {
-                width: 100%;
-                height: 50px; 
-            }
+            .controles { display: grid; grid-template-columns: 1fr; gap: 10px; }
+            button, select { width: 100%; height: 50px; }
         }
     </style>
 </head>
 <body>
 
-    <h1>Cámara del Servidor Ubuntu</h1>
+    <h1>Servidor de Vigilancia</h1>
     
+    <button id="btnEncendido" onclick="toggleCamara()">🔌 Encender Cámara</button>
+
+    <div class="visor-container">
+        <div id="placeholderCamara">
+            <span>💤</span>
+            <p>La cámara está apagada</p>
+        </div>
+        <img id="visorCamara" alt="Transmisión de la cámara">
+    </div>
+
     <div class="controles">
         <select id="selectorResolucion" onchange="cambiarResolucion()">
             <option value="320x240">320 x 240 (Baja)</option>
@@ -111,10 +133,58 @@
         <button id="btnVideo" onclick="grabarVideo()">🎥 Iniciar Grabación</button>
     </div>
 
-    <img src="{{ url_for('video_feed') }}" alt="Transmisión de la cámara">
-
     <script>
+        let camaraEncendida = false;
+
+        function toggleCamara() {
+            let btnEncendido = document.getElementById('btnEncendido');
+            let btnFoto = document.getElementById('btnFoto');
+            let btnVideo = document.getElementById('btnVideo');
+            let visor = document.getElementById('visorCamara');
+            let placeholder = document.getElementById('placeholderCamara');
+
+            fetch('/toggle_camara', { method: 'POST' })
+                .then(res => res.text())
+                .then(estado => {
+                    if (estado === "encendida") {
+                        camaraEncendida = true;
+                        btnEncendido.innerText = "🔌 Apagar Cámara";
+                        btnEncendido.classList.add("activa");
+                        
+                        // Activamos visualmente los botones de captura
+                        btnFoto.classList.add("lista");
+                        btnVideo.classList.add("lista");
+
+                        // Ocultamos el reposo y mostramos la imagen
+                        placeholder.style.display = "none";
+                        visor.style.display = "block";
+                        
+                        // Añadimos un timestamp a la URL para forzar al navegador a conectar
+                        visor.src = "{{ url_for('video_feed') }}?" + new Date().getTime();
+                    } else {
+                        camaraEncendida = false;
+                        btnEncendido.innerText = "🔌 Encender Cámara";
+                        btnEncendido.classList.remove("activa");
+                        
+                        // Desactivamos los botones
+                        btnFoto.classList.remove("lista");
+                        btnVideo.classList.remove("lista");
+                        btnVideo.classList.remove("grabando");
+                        btnVideo.innerText = "🎥 Iniciar Grabación";
+
+                        // Mostramos el reposo y cortamos la conexión de la imagen
+                        visor.style.display = "none";
+                        visor.src = ""; 
+                        placeholder.style.display = "flex";
+                    }
+                });
+        }
+
         function tomarFoto() {
+            if (!camaraEncendida) {
+                alert("¡Debes encender la cámara primero!");
+                return;
+            }
             fetch('/tomar_foto', { method: 'POST' })
                 .then(respuesta => {
                     if(respuesta.ok) alert('¡Foto guardada en la carpeta "capturas"!');
@@ -122,8 +192,12 @@
         }
 
         function grabarVideo() {
-            let boton = document.getElementById('btnVideo');
+            if (!camaraEncendida) {
+                alert("¡Debes encender la cámara primero!");
+                return;
+            }
             
+            let boton = document.getElementById('btnVideo');
             fetch('/toggle_video', { method: 'POST' })
                 .then(respuesta => respuesta.text())
                 .then(estado => {
@@ -141,19 +215,10 @@
         function cambiarResolucion() {
             let selector = document.getElementById('selectorResolucion');
             let dimensiones = selector.value.split('x');
-            let ancho = dimensiones[0];
-            let alto = dimensiones[1];
-
             fetch('/set_resolucion', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ ancho: ancho, alto: alto })
-            }).then(respuesta => {
-                if(respuesta.ok) {
-                    console.log("Petición de resolución enviada exitosamente.");
-                }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ancho: dimensiones[0], alto: dimensiones[1] })
             });
         }
     </script>
