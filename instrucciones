@@ -1,0 +1,35 @@
+
+
+
+sudo nano /etc/systemd/system/cam_manager.service
+
+[Unit]
+Description=Servicio de Servidor de Camara (Flask)
+After=network.target
+
+[Service]
+# Ejecutar como tu usuario habitual
+User=aegir
+
+# La carpeta raíz donde está tu app.py, templates y el entorno virtual
+WorkingDirectory=/home/aegir/Apps/Cam-manager
+
+# MAGIA AQUÍ: Usamos el Python de tu entorno virtual para ejecutar el script
+ExecStart=/home/aegir/Apps/Cam-manager/.venv/bin/python /home/aegir/Apps/Cam-manager/app.py
+
+# Reiniciar automáticamente si el script se cae
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+
+# Recargamos la configuración
+sudo systemctl daemon-reload
+
+# Reiniciamos el servicio
+sudo systemctl restart cam_manager
+
+# Revisamos nuevamente el estatus
+sudo systemctl status cam_manager
+
