@@ -3,8 +3,17 @@ import cv2
 import datetime
 import time
 import threading
+import os # <-- Imprescindible para manejar las rutas absolutas
 
 app = Flask(__name__)
+
+# --- CONFIGURACIÓN DE CARPETA ---
+# Ruta absoluta para que el demonio de Ubuntu sepa exactamente dónde guardar
+CARPETA_CAPTURAS = '/mnt/sd/Cam-capturas'
+
+# Si la carpeta no existe, Python la creará automáticamente al iniciar
+if not os.path.exists(CARPETA_CAPTURAS):
+    os.makedirs(CARPETA_CAPTURAS)
 
 # --- VARIABLES GLOBALES ---
 frame_actual = None
@@ -14,23 +23,21 @@ video_writer = None
 resolucion_ancho = 640
 resolucion_alto = 480
 actualizar_camara = False
-camara_activa = False  # <-- NUEVA VARIABLE: La cámara inicia apagada
+camara_activa = False
 
 def capturar_camara_fondo():
     global frame_actual, ultimo_frame_guardado, grabando, video_writer, resolucion_ancho, resolucion_alto, actualizar_camara, camara_activa
     
-    camara = None # Empezamos sin conexión al hardware
+    camara = None 
     
     while True:
         if camara_activa:
-            # Si el usuario encendió la cámara y aún no está conectada, la abrimos
             if camara is None:
                 camara = cv2.VideoCapture(0)
                 camara.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                 camara.set(cv2.CAP_PROP_FRAME_WIDTH, resolucion_ancho)
                 camara.set(cv2.CAP_PROP_FRAME_HEIGHT, resolucion_alto)
             
-            # Si se pidió un cambio de resolución mientras está encendida
             if actualizar_camara:
                 camara.set(cv2.CAP_PROP_FRAME_WIDTH, resolucion_ancho)
                 camara.set(cv2.CAP_PROP_FRAME_HEIGHT, resolucion_alto)
@@ -45,21 +52,21 @@ def capturar_camara_fondo():
                 if grabando:
                     if video_writer is None:
                         codigo_video = cv2.VideoWriter_fourcc(*'mp4v')
-                        nombre_video = datetime.datetime.now().strftime("capturas/video_%Y%m%d_%H%M%S.mp4")
-                        video_writer = cv2.VideoWriter(nombre_video, codigo_video, 20.0, (resolucion_ancho, resolucion_alto))
+                        # Guardamos el video en la ruta absoluta
+                        nombre_archivo = datetime.datetime.now().strftime("video_%Y%m%d_%H%M%S.mp4")
+                        ruta_completa = os.path.join(CARPETA_CAPTURAS, nombre_archivo)
+                        video_writer = cv2.VideoWriter(ruta_completa, codigo_video, 20.0, (resolucion_ancho, resolucion_alto))
                     video_writer.write(frame)
                 else:
                     if video_writer is not None:
                         video_writer.release()
                         video_writer = None
         else:
-            # Si la cámara está apagada, liberamos el hardware
             if camara is not None:
                 camara.release()
                 camara = None
                 frame_actual = None
                 
-                # Por seguridad, si estaba grabando, detenemos el video
                 if grabando:
                     grabando = False
                     if video_writer is not None:
@@ -71,7 +78,6 @@ def capturar_camara_fondo():
 def generar_frames():
     global frame_actual, camara_activa
     while True:
-        # Solo enviamos imágenes si la cámara está activa y tenemos un frame
         if camara_activa and frame_actual is not None:
             parametros_jpg = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
             ret, buffer = cv2.imencode('.jpg', frame_actual, parametros_jpg)
@@ -79,7 +85,6 @@ def generar_frames():
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
         else:
-            # Si está apagada, simplemente hacemos una pausa para no consumir recursos
             time.sleep(0.5)
             
         time.sleep(0.03)
@@ -92,7 +97,6 @@ def inicio():
 def video_feed():
     return Response(generar_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# --- NUEVA RUTA PARA ENCENDER/APAGAR ---
 @app.route('/toggle_camara', methods=['POST'])
 def toggle_camara():
     global camara_activa
@@ -105,8 +109,10 @@ def tomar_foto():
     if not camara_activa:
         return "Cámara apagada", 400
     if ultimo_frame_guardado is not None:
-        nombre_foto = datetime.datetime.now().strftime("capturas/foto_%Y%m%d_%H%M%S.jpg")
-        cv2.imwrite(nombre_foto, ultimo_frame_guardado)
+        # Guardamos la foto en la ruta absoluta
+        nombre_archivo = datetime.datetime.now().strftime("foto_%Y%m%d_%H%M%S.jpg")
+        ruta_completa = os.path.join(CARPETA_CAPTURAS, nombre_archivo)
+        cv2.imwrite(ruta_completa, ultimo_frame_guardado)
         return "Foto guardada", 200
     return "Error", 500
 
