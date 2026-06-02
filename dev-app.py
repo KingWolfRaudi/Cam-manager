@@ -2,6 +2,7 @@ from flask import Flask, render_template, Response, request
 import cv2
 import datetime
 import os
+import time
 
 app = Flask(__name__)
 
@@ -54,6 +55,7 @@ def generar_frames():
             
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+            time.sleep(0.03)
 
 @app.route('/')
 def inicio():
