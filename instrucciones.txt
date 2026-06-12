@@ -5,7 +5,8 @@ sudo nano /etc/systemd/system/cam_manager.service
 
 [Unit]
 Description=Servicio de Servidor de Camara (Flask)
-After=network.target
+After=network-online.target multi-user.target
+Wants=network-online.target
 
 [Service]
 # Ejecutar como tu usuario habitual
@@ -23,7 +24,7 @@ RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
-
+----------------------------------------------------------------------------
 # Recargamos la configuración
 sudo systemctl daemon-reload
 
@@ -32,4 +33,9 @@ sudo systemctl restart cam_manager
 
 # Revisamos nuevamente el estatus
 sudo systemctl status cam_manager
+
+# Ejecuta este comando en tu terminal para darle acceso persistente al hardware de captura:
+sudo usermod -aG video aegir
+(Después de ejecutar esto, es necesario reiniciar para que el cambio de grupos surta efecto completo).
+----------------------------------------------------------------------------
 
