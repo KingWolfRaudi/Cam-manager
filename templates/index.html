@@ -131,11 +131,31 @@
 
         <button id="btnFoto" onclick="tomarFoto()">📸 Tomar Foto</button>
         <button id="btnVideo" onclick="grabarVideo()">🎥 Iniciar Grabación</button>
+        <button id="btnMovimiento" onclick="toggleMovimiento()">🏃 Detección: Apagada</button>
     </div>
 
     <script>
         let camaraEncendida = false;
+        let movimientoActivo = false;
 
+        function toggleMovimiento() {
+            let boton = document.getElementById('btnMovimiento');
+            console.log("Enviando petición a /toggle_deteccion");
+            fetch('/toggle_deteccion', { method: 'POST' })
+                .then(res => res.text())
+                .then(estado => {
+                    console.log("Respuesta recibida:", estado);
+                    if (estado === "activa") {
+                        movimientoActivo = true;
+                        boton.innerText = "🏃 Detección: Encendida";
+                        boton.style.backgroundColor = "#4CAF50";
+                    } else {
+                        movimientoActivo = false;
+                        boton.innerText = "🏃 Detección: Apagada";
+                        boton.style.backgroundColor = "#555";
+                    }
+                });
+        }
         function toggleCamara() {
             let btnEncendido = document.getElementById('btnEncendido');
             let btnFoto = document.getElementById('btnFoto');

@@ -3,37 +3,92 @@ import cv2
 import datetime
 import time
 import threading
-import os # <-- Imprescindible para manejar las rutas absolutas
+import os
+import json
+import requests
 
 app = Flask(__name__)
 
-# --- CONFIGURACIÓN DE CARPETA ---
-# Ruta absoluta para que el demonio de Ubuntu sepa exactamente dónde guardar
+# --- CONFIGURACIÓN ---
+def cargar_config():
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+config = cargar_config()
+
 CARPETA_CAPTURAS = '/mnt/sd/Cam-capturas'
 
-# Si la carpeta no existe, Python la creará automáticamente al iniciar
-if not os.path.exists(CARPETA_CAPTURAS):
-    os.makedirs(CARPETA_CAPTURAS)
+# --- NOTIFICACIONES ---
+def enviar_notificacion_telegram(mensaje):
+    print(f"DEBUG: Intentando enviar notificación a Telegram: {mensaje}", flush=True)
+    url = f"https://api.telegram.org/bot{config['telegram_token']}/sendMessage"
+    payload = {
+        "chat_id": config['chat_id'],
+        "text": mensaje
+    }
+    try:
+        respuesta = requests.post(url, data=payload)
+        print(f"DEBUG: Respuesta recibida: {respuesta.status_code}", flush=True)
+        if respuesta.status_code == 200:
+            print("Notificación enviada con éxito.", flush=True)
+        else:
+            print(f"Error al enviar notificación. Código: {respuesta.status_code}, Respuesta: {respuesta.text}", flush=True)
+    except Exception as e:
+        print(f"Error enviando notificación: {e}", flush=True)
+
+def enviar_video_telegram(ruta_video):
+    print(f"DEBUG: Intentando enviar video a Telegram: {ruta_video}", flush=True)
+    url = f"https://api.telegram.org/bot{config['telegram_token']}/sendVideo"
+    
+    try:
+        with open(ruta_video, 'rb') as video_file:
+            payload = {
+                "chat_id": config['chat_id']
+            }
+            files = {
+                "video": video_file
+            }
+            respuesta = requests.post(url, data=payload, files=files)
+            
+        print(f"DEBUG: Respuesta video recibida: {respuesta.status_code}", flush=True)
+        if respuesta.status_code == 200:
+            print("Video enviado con éxito.", flush=True)
+        else:
+            print(f"Error al enviar video. Código: {respuesta.status_code}, Respuesta: {respuesta.text}", flush=True)
+    except Exception as e:
+        print(f"Error enviando video: {e}", flush=True)
 
 # --- VARIABLES GLOBALES ---
 frame_actual = None
 ultimo_frame_guardado = None
 grabando = False
 video_writer = None
+ruta_grabacion_actual = None # Nueva variable
+tiempo_inicio_grabacion = 0 # Nueva variable
 resolucion_ancho = 640
 resolucion_alto = 480
 actualizar_camara = False
 camara_activa = False
+modo_deteccion = False
+ultima_deteccion = 0
+background_frame = None
 
 def capturar_camara_fondo():
-    global frame_actual, ultimo_frame_guardado, grabando, video_writer, resolucion_ancho, resolucion_alto, actualizar_camara, camara_activa
+    global frame_actual, ultimo_frame_guardado, grabando, video_writer, ruta_grabacion_actual, tiempo_inicio_grabacion, resolucion_ancho, resolucion_alto, actualizar_camara, camara_activa, modo_deteccion, ultima_deteccion, background_frame
     
     camara = None 
     
     while True:
         if camara_activa:
             if camara is None:
+                print("Intentando abrir la cámara...")
                 camara = cv2.VideoCapture(0)
+                if not camara.isOpened():
+                    print("Error: No se pudo abrir la cámara.")
+                    camara = None
+                else:
+                    print("Cámara abierta exitosamente.")
+                
                 camara.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                 camara.set(cv2.CAP_PROP_FRAME_WIDTH, resolucion_ancho)
                 camara.set(cv2.CAP_PROP_FRAME_HEIGHT, resolucion_alto)
@@ -49,23 +104,60 @@ def capturar_camara_fondo():
                 frame_actual = frame.copy()
                 ultimo_frame_guardado = frame.copy()
                 
+                # --- LÓGICA DE DETECCIÓN DE MOVIMIENTO ---
+                if modo_deteccion:
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    gray = cv2.GaussianBlur(gray, (21, 21), 0)
+                    
+                    if background_frame is None:
+                        background_frame = gray
+                    else:
+                        delta = cv2.absdiff(background_frame, gray)
+                        thresh = cv2.threshold(delta, 25, 255, cv2.THRESH_BINARY)[1]
+                        thresh = cv2.dilate(thresh, None, iterations=2)
+                        
+                        movimiento_detectado = cv2.countNonZero(thresh)
+                        
+                        if movimiento_detectado > 25000: # Umbral de sensibilidad aumentado
+                            if not grabando:
+                                print(f"DEBUG: Movimiento detectado ({movimiento_detectado}), iniciando grabación...", flush=True)
+                                grabando = True
+                                tiempo_inicio_grabacion = time.time()
+                                enviar_notificacion_telegram("⚠️ Movimiento detectado. Grabando...")
+                                ultima_deteccion = time.time()
+                else:
+                    if background_frame is not None:
+                         background_frame = None # Reset cuando no hay deteccion
+
+                # --- LÓGICA DE GRABACIÓN ---
                 if grabando:
                     if video_writer is None:
                         codigo_video = cv2.VideoWriter_fourcc(*'mp4v')
-                        # Guardamos el video en la ruta absoluta
                         nombre_archivo = datetime.datetime.now().strftime("video_%Y%m%d_%H%M%S.mp4")
-                        ruta_completa = os.path.join(CARPETA_CAPTURAS, nombre_archivo)
-                        video_writer = cv2.VideoWriter(ruta_completa, codigo_video, 20.0, (resolucion_ancho, resolucion_alto))
+                        ruta_grabacion_actual = os.path.join(CARPETA_CAPTURAS, nombre_archivo)
+                        video_writer = cv2.VideoWriter(ruta_grabacion_actual, codigo_video, 20.0, (resolucion_ancho, resolucion_alto))
+                    
                     video_writer.write(frame)
+                    
+                    # Detener grabación automática después de 10 segundos
+                    if time.time() - tiempo_inicio_grabacion > 10:
+                        print("DEBUG: Grabación automática finalizada (10s).", flush=True)
+                        grabando = False
+                        video_writer.release()
+                        video_writer = None
+                        enviar_video_telegram(ruta_grabacion_actual)
+                        ruta_grabacion_actual = None
                 else:
                     if video_writer is not None:
                         video_writer.release()
                         video_writer = None
+                        ruta_grabacion_actual = None
         else:
             if camara is not None:
                 camara.release()
                 camara = None
                 frame_actual = None
+                background_frame = None
                 
                 if grabando:
                     grabando = False
@@ -96,6 +188,13 @@ def inicio():
 @app.route('/video_feed')
 def video_feed():
     return Response(generar_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/toggle_deteccion', methods=['POST'])
+def toggle_deteccion():
+    global modo_deteccion
+    modo_deteccion = not modo_deteccion
+    print(f"DEBUG: Detección de movimiento cambiada a: {modo_deteccion}", flush=True)
+    return "activa" if modo_deteccion else "desactivada", 200
 
 @app.route('/toggle_camara', methods=['POST'])
 def toggle_camara():
