@@ -69,29 +69,35 @@ resolucion_ancho = 640
 resolucion_alto = 480
 actualizar_camara = False
 camara_activa = False
+camara_index = 0
 modo_deteccion = False
 ultima_deteccion = 0
 background_frame = None
 
 def capturar_camara_fondo():
-    global frame_actual, ultimo_frame_guardado, grabando, video_writer, ruta_grabacion_actual, tiempo_inicio_grabacion, resolucion_ancho, resolucion_alto, actualizar_camara, camara_activa, modo_deteccion, ultima_deteccion, background_frame
+    global frame_actual, ultimo_frame_guardado, grabando, video_writer, ruta_grabacion_actual, tiempo_inicio_grabacion, resolucion_ancho, resolucion_alto, actualizar_camara, camara_activa, camara_index, modo_deteccion, ultima_deteccion, background_frame
     
     camara = None 
+    index_actual = -1
     
     while True:
         if camara_activa:
-            if camara is None:
-                print("Intentando abrir la cámara...")
-                camara = cv2.VideoCapture(0)
+            if camara is None or index_actual != camara_index:
+                if camara is not None:
+                    camara.release()
+                print(f"Intentando abrir la cámara {camara_index}...", flush=True)
+                camara = cv2.VideoCapture(camara_index)
+                index_actual = camara_index
                 if not camara.isOpened():
-                    print("Error: No se pudo abrir la cámara.")
+                    print("Error: No se pudo abrir la cámara.", flush=True)
                     camara = None
                 else:
-                    print("Cámara abierta exitosamente.")
+                    print("Cámara abierta exitosamente.", flush=True)
                 
-                camara.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-                camara.set(cv2.CAP_PROP_FRAME_WIDTH, resolucion_ancho)
-                camara.set(cv2.CAP_PROP_FRAME_HEIGHT, resolucion_alto)
+                if camara:
+                    camara.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                    camara.set(cv2.CAP_PROP_FRAME_WIDTH, resolucion_ancho)
+                    camara.set(cv2.CAP_PROP_FRAME_HEIGHT, resolucion_alto)
             
             if actualizar_camara:
                 camara.set(cv2.CAP_PROP_FRAME_WIDTH, resolucion_ancho)
@@ -232,6 +238,35 @@ def set_resolucion():
     resolucion_alto = int(datos['alto'])
     actualizar_camara = True
     return "Resolución actualizada", 200
+
+@app.route('/listar_camaras', methods=['GET'])
+def listar_camaras():
+    camaras = []
+    parent_devices = {}
+    
+    for i in range(10):
+        dev_path = f'/sys/class/video4linux/video{i}'
+        if os.path.exists(dev_path):
+            # Obtener la ruta real del dispositivo físico (el padre USB)
+            real_path = os.path.realpath(dev_path)
+            # Extraer solo la parte del dispositivo USB (ej: .../usb1/1-3/1-3:1.0/)
+            parent = '/'.join(real_path.split('/')[:-1])
+            
+            if parent not in parent_devices:
+                cap = cv2.VideoCapture(i)
+                if cap.isOpened():
+                    camaras.append(i)
+                    parent_devices[parent] = i
+                    cap.release()
+                    
+    return {"camaras": camaras}, 200
+
+@app.route('/set_camara', methods=['POST'])
+def set_camara():
+    global camara_index
+    datos = request.get_json()
+    camara_index = int(datos['index'])
+    return "Cámara cambiada", 200
 
 if __name__ == '__main__':
     hilo = threading.Thread(target=capturar_camara_fondo)

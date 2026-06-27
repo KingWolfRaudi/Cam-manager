@@ -123,6 +123,9 @@
     </div>
 
     <div class="controles">
+        <select id="selectorCamara" onchange="cambiarCamara()">
+            <option value="0">Cámara 0 (Default)</option>
+        </select>
         <select id="selectorResolucion" onchange="cambiarResolucion()">
             <option value="320x240">320 x 240 (Baja)</option>
             <option value="640x480" selected>640 x 480 (Estándar)</option>
@@ -135,6 +138,28 @@
     </div>
 
     <script>
+        // Cargar cámaras al iniciar
+        fetch('/listar_camaras')
+            .then(res => res.json())
+            .then(data => {
+                let selector = document.getElementById('selectorCamara');
+                selector.innerHTML = '';
+                data.camaras.forEach(index => {
+                    let opt = document.createElement('option');
+                    opt.value = index;
+                    opt.innerText = "Cámara " + index;
+                    selector.appendChild(opt);
+                });
+            });
+
+        function cambiarCamara() {
+            let selector = document.getElementById('selectorCamara');
+            fetch('/set_camara', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ index: selector.value })
+            });
+        }
         let camaraEncendida = false;
         let movimientoActivo = false;
 
