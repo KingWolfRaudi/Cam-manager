@@ -3,269 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cámara de la Chromebook</title>
+    <title>Central CCTV - Cam-manager</title>
     <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #222;
-            color: white;
-            margin: 0;
-            padding: 10px 15px; 
-            box-sizing: border-box;
-        }
-
-        h1 {
-            text-align: center;
-            font-size: 1.6rem;
-            margin-bottom: 15px;
-        }
-
-        /* --- CONTENEDOR DEL VISOR --- */
-        .visor-container {
-            width: 100%;
-            max-width: 640px;
-            aspect-ratio: 4 / 3;
-            margin-bottom: 20px;
-            position: relative;
-        }
-
-        /* La imagen de la cámara ahora está oculta por defecto */
-        #visorCamara {
-            border: 4px solid #555;
-            border-radius: 10px;
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.5);
-            width: 100%; 
-            height: 100%;
-            object-fit: contain; 
-            background-color: #000; 
-            display: none; 
-        }
-
-        /* Pantalla de reposo cuando la cámara está apagada */
-        #placeholderCamara {
-            border: 4px dashed #555;
-            border-radius: 10px;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #777;
-            font-size: 1.2rem;
-            box-sizing: border-box;
-        }
-
-        .controles {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            justify-content: center;
-            width: 100%;
-            max-width: 640px;
-            margin-bottom: 20px;
-        }
-
-        button, select {
-            flex: 1 1 auto;
-            min-width: 150px;
-            padding: 12px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            transition: background-color 0.3s, transform 0.1s;
-            display: flex; 
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            white-space: nowrap; 
-        }
-
-        button:active { transform: scale(0.95); }
-        select { background-color: #555; color: white; border: 1px solid #777; }
-        
-        #btnEncendido { background-color: #4CAF50; color: white; width: 100%; max-width: 640px; margin-bottom: 20px;}
-        #btnEncendido.activa { background-color: #f44336; }
-        
-        #btnFoto { background-color: #555; color: white; } /* Inicia en gris (desactivado) */
-        #btnVideo { background-color: #555; color: white; }
-        
-        /* Clases dinámicas cuando la cámara se enciende */
-        #btnFoto.lista { background-color: #4CAF50; }
-        #btnFoto.lista:hover { background-color: #45a049; }
-        #btnVideo.lista { background-color: #2196F3; }
-        #btnVideo.lista:hover { background-color: #0b7dda; }
-        #btnVideo.grabando { background-color: #f44336 !important; }
-
-        @media (max-width: 768px) {
-            .controles { display: grid; grid-template-columns: 1fr; gap: 10px; }
-            button, select { width: 100%; height: 50px; }
-        }
+        body { font-family: sans-serif; background: #111; color: white; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .card { background: #222; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .card h3 { margin: 0 0 8px 0; font-size: 1rem; }
+        .visor { width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 5px; margin-bottom: 8px; display: block; object-fit: contain; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+        button { padding: 8px; cursor: pointer; border: none; border-radius: 4px; background: #444; color: white; font-weight: bold; font-size: 0.85rem; }
+        button.active { background: #4CAF50; }
+        button.recording { background: #f44336; }
+        select.resolution { width: 100%; margin-top: 6px; padding: 6px; border-radius: 4px; background: #333; color: white; border: 1px solid #555; font-size: 0.8rem; cursor: pointer; }
     </style>
 </head>
 <body>
-
-    <h1>Servidor de Vigilancia</h1>
-    
-    <button id="btnEncendido" onclick="toggleCamara()">🔌 Encender Cámara</button>
-
-    <div class="visor-container">
-        <div id="placeholderCamara">
-            <span>💤</span>
-            <p>La cámara está apagada</p>
-        </div>
-        <img id="visorCamara" alt="Transmisión de la cámara">
-    </div>
-
-    <div class="controles">
-        <select id="selectorCamara" onchange="cambiarCamara()">
-            <option value="0">Cámara 0 (Default)</option>
-        </select>
-        <select id="selectorResolucion" onchange="cambiarResolucion()">
-            <option value="320x240">320 x 240 (Baja)</option>
-            <option value="640x480" selected>640 x 480 (Estándar)</option>
-            <option value="1280x720">1280 x 720 (HD)</option>
-        </select>
-
-        <button id="btnFoto" onclick="tomarFoto()">📸 Tomar Foto</button>
-        <button id="btnVideo" onclick="grabarVideo()">🎥 Iniciar Grabación</button>
-        <button id="btnMovimiento" onclick="toggleMovimiento()">🏃 Detección: Apagada</button>
-    </div>
+    <h1>Central de Vigilancia</h1>
+    <div class="grid" id="camGrid"></div>
 
     <script>
-        // Cargar cámaras al iniciar
-        fetch('/listar_camaras')
-            .then(res => res.json())
-            .then(data => {
-                let selector = document.getElementById('selectorCamara');
-                selector.innerHTML = '';
-                data.camaras.forEach(index => {
-                    let opt = document.createElement('option');
-                    opt.value = index;
-                    opt.innerText = "Cámara " + index;
-                    selector.appendChild(opt);
-                });
-            });
+        let camCards = [];
 
-        function cambiarCamara() {
-            let selector = document.getElementById('selectorCamara');
-            fetch('/set_camara', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ index: selector.value })
-            });
-        }
-        let camaraEncendida = false;
-        let movimientoActivo = false;
-
-        function toggleMovimiento() {
-            let boton = document.getElementById('btnMovimiento');
-            console.log("Enviando petición a /toggle_deteccion");
-            fetch('/toggle_deteccion', { method: 'POST' })
-                .then(res => res.text())
-                .then(estado => {
-                    console.log("Respuesta recibida:", estado);
-                    if (estado === "activa") {
-                        movimientoActivo = true;
-                        boton.innerText = "🏃 Detección: Encendida";
-                        boton.style.backgroundColor = "#4CAF50";
-                    } else {
-                        movimientoActivo = false;
-                        boton.innerText = "🏃 Detección: Apagada";
-                        boton.style.backgroundColor = "#555";
-                    }
-                });
-        }
-        function toggleCamara() {
-            let btnEncendido = document.getElementById('btnEncendido');
-            let btnFoto = document.getElementById('btnFoto');
-            let btnVideo = document.getElementById('btnVideo');
-            let visor = document.getElementById('visorCamara');
-            let placeholder = document.getElementById('placeholderCamara');
-
-            fetch('/toggle_camara', { method: 'POST' })
-                .then(res => res.text())
-                .then(estado => {
-                    if (estado === "encendida") {
-                        camaraEncendida = true;
-                        btnEncendido.innerText = "🔌 Apagar Cámara";
-                        btnEncendido.classList.add("activa");
-                        
-                        // Activamos visualmente los botones de captura
-                        btnFoto.classList.add("lista");
-                        btnVideo.classList.add("lista");
-
-                        // Ocultamos el reposo y mostramos la imagen
-                        placeholder.style.display = "none";
-                        visor.style.display = "block";
-                        
-                        // Añadimos un timestamp a la URL para forzar al navegador a conectar
-                        visor.src = "{{ url_for('video_feed') }}?" + new Date().getTime();
-                    } else {
-                        camaraEncendida = false;
-                        btnEncendido.innerText = "🔌 Encender Cámara";
-                        btnEncendido.classList.remove("activa");
-                        
-                        // Desactivamos los botones
-                        btnFoto.classList.remove("lista");
-                        btnVideo.classList.remove("lista");
-                        btnVideo.classList.remove("grabando");
-                        btnVideo.innerText = "🎥 Iniciar Grabación";
-
-                        // Mostramos el reposo y cortamos la conexión de la imagen
-                        visor.style.display = "none";
-                        visor.src = ""; 
-                        placeholder.style.display = "flex";
-                    }
-                });
-        }
-
-        function tomarFoto() {
-            if (!camaraEncendida) {
-                alert("¡Debes encender la cámara primero!");
-                return;
-            }
-            fetch('/tomar_foto', { method: 'POST' })
-                .then(respuesta => {
-                    if(respuesta.ok) alert('¡Foto guardada en la carpeta "capturas"!');
-                });
-        }
-
-        function grabarVideo() {
-            if (!camaraEncendida) {
-                alert("¡Debes encender la cámara primero!");
-                return;
-            }
+        async function updateCard(card, camId) {
+            const res = await fetch(`/status/${camId}`);
+            const data = await res.json();
+            const btnEnc = card.querySelector('.btnEncendido');
+            const btnRec = card.querySelector('.btnVideo');
+            const btnDet = card.querySelector('.btnMovimiento');
+            const visor = card.querySelector('.visor');
             
-            let boton = document.getElementById('btnVideo');
-            fetch('/toggle_video', { method: 'POST' })
-                .then(respuesta => respuesta.text())
-                .then(estado => {
-                    if (estado === "grabando") {
-                        boton.innerText = "⏹️ Detener Grabación";
-                        boton.classList.add("grabando");
-                    } else {
-                        boton.innerText = "🎥 Iniciar Grabación";
-                        boton.classList.remove("grabando");
-                        alert('¡Video guardado en la carpeta "capturas"!');
-                    }
-                });
+            btnEnc.innerText = data.active ? "Apagar" : "Encender";
+            btnEnc.className = `btnEncendido ${data.active ? 'active' : ''}`;
+            
+            btnRec.innerText = data.recording ? "Detener Grabar" : "Grabar";
+            btnRec.className = `btnVideo ${data.recording ? 'recording' : ''}`;
+            
+            btnDet.innerText = data.motion ? "Det: ON" : "Det: OFF";
+            btnDet.className = `btnMovimiento ${data.motion ? 'active' : ''}`;
+
+            if (data.active) {
+                if (!visor.src.includes(`/video_feed/${camId}`)) {
+                    visor.src = `/video_feed/${camId}?t=` + new Date().getTime();
+                }
+            } else {
+                visor.removeAttribute('src');
+            }
         }
 
-        function cambiarResolucion() {
-            let selector = document.getElementById('selectorResolucion');
-            let dimensiones = selector.value.split('x');
+        async function action(camId, endpoint, card) {
+            const res = await fetch(endpoint, { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ camera_id: camId })
+            });
+            if (endpoint === '/tomar_foto') {
+                if (res.ok) alert('✅ Foto guardada');
+                else alert('❌ Error: cámara apagada o sin señal');
+                return;
+            }
+            // Optimistic: toggle button immediately
+            const btnEnc = card.querySelector('.btnEncendido');
+            const btnRec = card.querySelector('.btnVideo');
+            const btnDet = card.querySelector('.btnMovimiento');
+            if (endpoint === '/toggle_camara') {
+                const on = btnEnc.innerText === "Apagar";
+                btnEnc.innerText = on ? "Encender" : "Apagar";
+                btnEnc.className = `btnEncendido ${!on ? 'active' : ''}`;
+            } else if (endpoint === '/toggle_video') {
+                const on = btnRec.innerText === "Detener Grabar";
+                btnRec.innerText = on ? "Grabar" : "Detener Grabar";
+                btnRec.className = `btnVideo ${!on ? 'recording' : ''}`;
+            } else if (endpoint === '/toggle_deteccion') {
+                const on = btnDet.innerText === "Det: ON";
+                btnDet.innerText = on ? "Det: OFF" : "Det: ON";
+                btnDet.className = `btnMovimiento ${!on ? 'active' : ''}`;
+            }
+        }
+
+        function cambiarResolucion(camId, select) {
+            const dims = select.value.split('x');
             fetch('/set_resolucion', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ancho: dimensiones[0], alto: dimensiones[1] })
+                body: JSON.stringify({ camera_id: camId, ancho: dims[0], alto: dims[1] })
             });
         }
+
+        // Sync periódico cada 3 segundos
+        setInterval(() => {
+            camCards.forEach(({card, id}) => updateCard(card, id));
+        }, 3000);
+
+        fetch('/listar_camaras')
+            .then(res => res.json())
+            .then(data => {
+                const grid = document.getElementById('camGrid');
+                data.camaras.forEach(camId => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <h3>${camId}</h3>
+                        <img class="visor" src="/video_feed/${camId}">
+                        <div class="controls">
+                            <button class="btnEncendido" onclick="action('${camId}', '/toggle_camara', this.parentElement.parentElement)">Encender</button>
+                            <button class="btnFoto" onclick="action('${camId}', '/tomar_foto', this.parentElement.parentElement)">Foto</button>
+                            <button class="btnVideo" onclick="action('${camId}', '/toggle_video', this.parentElement.parentElement)">Grabar</button>
+                            <button class="btnMovimiento" onclick="action('${camId}', '/toggle_deteccion', this.parentElement.parentElement)">Det: OFF</button>
+                        </div>
+                        <select class="resolution" onchange="cambiarResolucion('${camId}', this)">
+                            <option value="320x240">320 x 240 (Baja)</option>
+                            <option value="640x480" selected>640 x 480 (Estándar)</option>
+                            <option value="1280x720">1280 x 720 (HD)</option>
+                        </select>
+                    `;
+                    grid.appendChild(card);
+                    camCards.push({card, id: camId});
+                    updateCard(card, camId);
+                });
+            });
     </script>
 </body>
 </html>

@@ -1,4 +1,12 @@
 {
     "telegram_token": "7297516216:AAFUY-Qm7n_CNPFjvanjmWl0PCtzVSonw1s",
-    "chat_id": "295091172"
+    "chat_id": "295091172",
+    "cameras": [
+        {
+            "id": "camara1",
+            "device_index": 0,
+            "ancho": 640,
+            "alto": 480
+        }
+    ]
 }
